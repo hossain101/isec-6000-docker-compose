@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # SERVICE 1: The Docker-in-Docker Daemon
+  # Why: Jenkins needs a Docker engine to build images. Running a separate DinD container
+  # keeps the Jenkins container lightweight and isolates the privileged Docker daemon.
+  jenkins-docker:
+    image: docker:dind
+    privileged: true # Required for DinD to create nested containers and networks.
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs # Instructs DinD to generate TLS certificates for secure communication.
+    volumes:
+      - jenkins-docker-certs:/certs/client # Persists the generated client TLS certificates.
+      - jenkins-data:/var/jenkins_home # Shares the workspace so DinD can access the code Jenkins checks out.
+    networks:
+      - jenkins-network
+
+  # SERVICE 2: The Jenkins CI/CD Server
+  # Why: This is the main orchestrator that will run our pipelines.
+  jenkins:
+    build: . # Builds the custom Dockerfile created in Step 1 to include the Docker CLI.
+    ports:
+      - "8080:8080" # Maps the Jenkins web UI to the host machine.
+      - "50000:50000" # Exposes the port used for Jenkins agent connections.
+    environment:
+      - DOCKER_HOST=tcp://docker:2376 # Tells the Jenkins Docker CLI to talk to the DinD container over TCP.
+      - DOCKER_CERT_PATH=/certs/client # Points Jenkins to the TLS certificates for authentication.
+      - DOCKER_TLS_VERIFY=1 # Enforces strict TLS verification for secure communication.
+    volumes:
+      - jenkins-data:/var/jenkins_home # Persists Jenkins configuration, jobs, and history across restarts.
+      - jenkins-docker-certs:/certs/client:ro # Mounts the TLS certs as read-only (ro) for security.
+    networks:
+      jenkins-network:
+        aliases:
+          - docker # Allows Jenkins to resolve the DinD container using the hostname 'docker'.
+
+volumes:
+  jenkins-data: # Named volume for Jenkins persistent data.
+  jenkins-docker-certs: # Named volume to safely share TLS certificates between the two containers.
+
+networks:
+  jenkins-network: # Isolated bridge network so the containers can communicate securely.
