@@ -31,8 +31,7 @@ services:
       - jenkins-docker-certs:/certs/client:ro # Mounts the TLS certs as read-only (ro) for security.
     networks:
       jenkins-network:
-        aliases:
-          - docker # Allows Jenkins to resolve the DinD container using the hostname 'docker'.
+        
 
 volumes:
   jenkins-data: # Named volume for Jenkins persistent data.
