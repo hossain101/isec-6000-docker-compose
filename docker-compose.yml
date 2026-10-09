@@ -13,7 +13,10 @@ services:
       - jenkins-docker-certs:/certs/client # Persists the generated client TLS certificates.
       - jenkins-data:/var/jenkins_home # Shares the workspace so DinD can access the code Jenkins checks out.
     networks:
-      - jenkins-network
+      jenkins-network:
+        aliases:
+          - docker
+      
 
   # SERVICE 2: The Jenkins CI/CD Server
   # Why: This is the main orchestrator that will run our pipelines.
